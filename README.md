@@ -1,143 +1,143 @@
 # CRDB Bank to ZOHO Books CSV Converter
 
-Dieses Skript konvertiert CRDB Bank Kontoauszüge im XLS-Format in CSV-Dateien, die in ZOHO Books importiert werden können.
+This script converts CRDB Bank (Tanzania) account statements in XLS format into CSV files that can be imported into ZOHO Books.
 
 ## Features
 
-- Konvertiert CRDB Bank XLS-Dateien in ZOHO Books CSV-Format
-- Bereinigt Leerzeichen in Beschreibungen
-- Begrenzt Beschreibungen auf maximal 99 Zeichen
-- Konvertiert Datumsformat zu YYYY-MM-DD
-- Entfernt Tausendertrennzeichen aus Beträgen
+- Converts CRDB Bank XLS files to ZOHO Books CSV format
+- Cleans up whitespace in descriptions
+- Truncates descriptions to a maximum of 99 characters
+- Converts date format to YYYY-MM-DD
+- Removes thousands separators from amounts
 
 ## Installation
 
-1. Python 3 installieren (falls nicht vorhanden)
-2. Virtuelles Environment erstellen und Abhängigkeiten installieren:
+1. Install Python 3 (if not already available)
+2. Create a virtual environment and install dependencies:
 
 ```bash
 python3 -m venv venv
-./venv/bin/pip install xlrd openpyxl
+./venv/bin/pip install -r requirements.txt
 ```
 
-## Verwendung
+## Usage
 
-### Methode 1: Batch-Konvertierung (Empfohlen) 🔥
+### Method 1: Batch Conversion (Recommended)
 
-Die einfachste Methode für mehrere Dateien:
+The easiest method for multiple files:
 
 ```bash
-# 1. Lege deine XLS-Dateien in den Ordner 'to_convert/'
-# 2. Führe die Batch-Konvertierung aus
+# 1. Place your XLS files in the 'to_convert/' folder
+# 2. Run the batch conversion
 ./convert_all.sh
 ```
 
 **Features:**
-- ✅ Konvertiert automatisch alle XLS-Dateien in `to_convert/`
-- ✅ Speichert Ergebnisse in `converted/`
-- ✅ Log-System verhindert Doppelkonvertierung
-- ✅ Erkennt geänderte Dateien automatisch (via Hash)
+- Automatically converts all XLS files in `to_convert/`
+- Saves results to `converted/`
+- Log system prevents duplicate conversions
+- Automatically detects modified files (via SHA256 hash)
 
-Das Skript erstellt eine `.conversion_log.json` Datei, die trackt, welche Dateien bereits konvertiert wurden. Wenn du das Skript erneut ausführst, werden nur neue oder geänderte Dateien konvertiert.
+The script creates a `.conversion_log.json` file that tracks which files have already been converted. When you run the script again, only new or modified files will be converted.
 
-### Methode 2: Einzeldatei-Konvertierung
+### Method 2: Single File Conversion
 
-Für einzelne Dateien kannst du das Einzelkonvertierungs-Skript verwenden:
+For individual files you can use the single conversion script:
 
 ```bash
-./convert.sh <xls_datei> [ausgabe_csv]
+./convert.sh <xls_file> [output_csv]
 ```
 
-**Beispiele:**
+**Examples:**
 
 ```bash
-# Konvertierung mit automatischem Ausgabenamen
+# Conversion with automatic output name
 ./convert.sh statement.xls
-# Erstellt: statement_zoho.csv
+# Creates: statement_zoho.csv
 
-# Konvertierung mit benutzerdefiniertem Ausgabenamen
-./convert.sh statement.xls meine_ausgabe.csv
+# Conversion with custom output name
+./convert.sh statement.xls my_output.csv
 ```
 
-### Methode 3: Direkter Aufruf mit Python
+### Method 3: Direct Python Invocation
 
 ```bash
-./venv/bin/python3 crdb_to_zoho.py <xls_datei> [ausgabe_csv]
+./venv/bin/python3 crdb_to_zoho.py <xls_file> [output_csv]
 ```
 
-## CSV-Format
+## CSV Format
 
-Die generierte CSV-Datei hat folgende Spalten:
+The generated CSV file has the following columns:
 
-- **Date**: Datum im Format YYYY-MM-DD
-- **Withdrawals**: Abbuchungen (Debit)
-- **Deposits**: Einzahlungen (Credit)
-- **Payee**: Empfänger (leer)
-- **Description**: Beschreibung (immer "Transfer")
-- **Reference Number**: Transaktionsbeschreibung (max. 99 Zeichen)
+- **Date**: Date in YYYY-MM-DD format
+- **Withdrawals**: Debit amounts
+- **Deposits**: Credit amounts
+- **Payee**: Recipient (empty)
+- **Description**: Description (always "Transfer")
+- **Reference Number**: Transaction details (max. 99 characters)
 
-Die CSV-Datei verwendet Semikolon (;) als Trennzeichen.
+The CSV file uses semicolon (;) as delimiter.
 
-## Struktur der Eingabedatei
+## Input File Structure
 
-Das Skript erwartet CRDB Bank XLS-Dateien mit folgender Struktur:
+The script expects CRDB Bank XLS files with the following structure:
 
-- Zeilen 0-13: Header/Metadaten
-- Zeile 14: Spaltenüberschriften
-- Ab Zeile 15: Transaktionsdaten
+- Rows 0-13: Header/metadata
+- Row 14: Column headers
+- Row 15+: Transaction data
 
-## Ordnerstruktur
+## Directory Structure
 
 ```
 crdb_csv_conv/
-├── to_convert/          # Lege hier deine XLS-Dateien ab
-├── converted/           # Hier werden die CSV-Dateien gespeichert
-├── example/             # Beispieldateien
-├── venv/                # Python Virtual Environment
-├── .conversion_log.json # Log der konvertierten Dateien (automatisch erstellt)
-├── crdb_to_zoho.py      # Hauptkonvertierungs-Skript
-├── batch_convert.py     # Batch-Konvertierungs-Skript
-├── convert.sh           # Wrapper für Einzeldatei-Konvertierung
-└── convert_all.sh       # Wrapper für Batch-Konvertierung
+├── to_convert/          # Place your XLS files here
+├── converted/           # Converted CSV files are saved here
+├── example/             # Example files
+├── venv/                # Python virtual environment
+├── .conversion_log.json # Log of converted files (created automatically)
+├── crdb_to_zoho.py      # Main conversion script
+├── batch_convert.py     # Batch conversion script
+├── convert.sh           # Wrapper for single file conversion
+└── convert_all.sh       # Wrapper for batch conversion
 ```
 
-## Log-System
+## Log System
 
-Das Batch-Konvertierungssystem verwendet eine `.conversion_log.json` Datei, um zu tracken:
-- Welche Dateien bereits konvertiert wurden
-- Wann die Konvertierung stattfand
-- Hash der Originaldatei (um Änderungen zu erkennen)
+The batch conversion system uses a `.conversion_log.json` file to track:
+- Which files have already been converted
+- When the conversion took place
+- Hash of the original file (to detect changes)
 
-Wenn eine Datei im `to_convert/` Ordner geändert wird, erkennt das System dies automatisch (via SHA256-Hash) und konvertiert die Datei erneut.
+If a file in the `to_convert/` folder is modified, the system automatically detects this (via SHA256 hash) and re-converts the file.
 
-### Log zurücksetzen
+### Reset Log
 
-Wenn du alle Dateien erneut konvertieren möchtest:
+If you want to re-convert all files:
 
 ```bash
 rm .conversion_log.json
 ./convert_all.sh
 ```
 
-## Beispiele
+## Examples
 
-### Batch-Konvertierung
+### Batch Conversion
 
 ```bash
-# XLS-Dateien in den Ordner kopieren
-cp /pfad/zu/statements/*.xls to_convert/
+# Copy XLS files to the folder
+cp /path/to/statements/*.xls to_convert/
 
-# Batch-Konvertierung ausführen
+# Run batch conversion
 ./convert_all.sh
 
-# Ergebnisse ansehen
+# View results
 ls -l converted/
 ```
 
-### Einzeldatei-Konvertierung
+### Single File Conversion
 
 ```bash
 ./convert.sh example/202601_Statement_TZS.xls example/output.csv
 ```
 
-Dies konvertiert die Beispiel-XLS-Datei in eine ZOHO Books kompatible CSV-Datei.
+This converts the example XLS file into a ZOHO Books compatible CSV file.
