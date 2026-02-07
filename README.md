@@ -78,13 +78,33 @@ The generated CSV file has the following columns:
 
 The CSV file uses semicolon (;) as delimiter.
 
-## Input File Structure
+## Input File Format
 
-The script expects CRDB Bank XLS files with the following structure:
+The script expects CRDB Bank account statement files in legacy Excel 97-2003 (`.xls`, CDFV2) format. These can be downloaded from the CRDB Bank online banking portal.
 
-- Rows 0-13: Header/metadata
-- Row 14: Column headers
-- Row 15+: Transaction data
+**File layout:**
+
+| Rows   | Content                  |
+|--------|--------------------------|
+| 0-13   | Header and bank metadata |
+| 14     | Column headers           |
+| 15+    | Transaction data         |
+
+**Transaction columns (row 15+):**
+
+| Column | Content        | Example                          |
+|--------|----------------|----------------------------------|
+| 0      | Posting Date   | ` 15.01.2026 12:30:00`           |
+| 1      | Details        | `POS Purchase at SHOP XYZ`       |
+| 2      | Value Date     | ` 15.01.2026 12:30:00`           |
+| 3      | Debit          | ` 977,000.00`                    |
+| 4      | Credit         | ` 0.00`                          |
+| 5      | Book Balance   | ` 1,234,567.89`                  |
+
+**Format details:**
+- Dates use the format `DD.MM.YYYY HH:MM:SS` (with leading space)
+- Amounts use comma as thousands separator and dot as decimal separator (e.g. `977,000.00`)
+- Only the first sheet of the workbook is processed
 
 ## Directory Structure
 
