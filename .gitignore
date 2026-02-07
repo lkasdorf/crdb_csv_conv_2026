@@ -1,0 +1,31 @@
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual Environment
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+*.Zone.Identifier
+
+# Output files
+*_zoho.csv
+*_test*.csv
+
+# Conversion directories and log
+to_convert/*.xls
+converted/*.csv
+.conversion_log.json
