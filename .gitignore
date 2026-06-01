@@ -20,6 +20,8 @@ ENV/
 .DS_Store
 Thumbs.db
 *.Zone.Identifier
+*Zone.Identifier
+*.bak
 
 # Output files
 *_zoho.csv

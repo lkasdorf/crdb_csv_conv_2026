@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Converts CRDB Bank (Tanzania) XLS account statements into semicolon-delimited CSV files for ZOHO Books import. Two modes: single-file (`convert.sh`) and batch with deduplication log (`convert_all.sh`).
 
+## Repository
+
+GitHub: `lkasdorf/crdb_csv_conv_2026` — branch `main`.
+
 ## Commands
 
 ```bash
@@ -23,6 +27,9 @@ diff <(./venv/bin/python3 crdb_to_zoho.py example/202601_Statement_TZS.xls /dev/
 
 # Reset deduplication log
 rm .conversion_log.json
+
+# Push to GitHub
+git push
 ```
 
 Only dependency: `xlrd` (reads legacy Excel 97-2003 CDFV2 `.xls` format).
