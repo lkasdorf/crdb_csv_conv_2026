@@ -8,11 +8,20 @@ Maintains a log to avoid re-converting files.
 """
 
 import os
+import sys
 import json
 import hashlib
 import glob
 from datetime import datetime
 from crdb_to_zoho import convert_xls_to_csv
+
+
+# Ensure emoji/Unicode output works on consoles with a non-UTF-8 encoding
+# (e.g. Windows cp1252), which would otherwise raise UnicodeEncodeError.
+for _stream in (sys.stdout, sys.stderr):
+    reconfigure = getattr(_stream, "reconfigure", None)
+    if reconfigure is not None:
+        reconfigure(encoding="utf-8", errors="replace")
 
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
