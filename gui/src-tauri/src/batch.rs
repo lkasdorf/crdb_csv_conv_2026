@@ -71,6 +71,46 @@ pub fn log_path(input_dir: &Path) -> PathBuf {
     }
 }
 
+#[derive(Serialize, Clone)]
+pub struct FileEntry {
+    pub name: String,
+    pub path: String,
+    pub size: u64,
+    pub status: FileStatus,
+}
+
+pub fn scan_input_dir(input_dir: &Path) -> Result<Vec<FileEntry>, String> {
+    let (log, _) = load_log(&log_path(input_dir));
+    let rd = std::fs::read_dir(input_dir)
+        .map_err(|e| format!("cannot read {}: {e}", input_dir.display()))?;
+
+    let mut entries = Vec::new();
+    for entry in rd.flatten() {
+        let path = entry.path();
+        let is_xls = path
+            .extension()
+            .map(|e| e.eq_ignore_ascii_case("xls"))
+            .unwrap_or(false);
+        if !is_xls || !path.is_file() {
+            continue;
+        }
+        let name = path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
+        let hash = hash_file(&path)?;
+        entries.push(FileEntry {
+            status: classify(&log, &name, &hash),
+            name,
+            path: path.to_string_lossy().into_owned(),
+            size,
+        });
+    }
+    entries.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(entries)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -179,5 +219,35 @@ mod tests {
         let (log, warning) = load_log(&path);
         assert!(warning.is_none());
         assert_eq!(log.get("202601_Statement_TZS.xls").unwrap().hash, "deadbeef");
+    }
+
+    #[test]
+    fn scan_finds_xls_with_status() {
+        let root = tempfile::tempdir().unwrap();
+        let input = root.path().join("to_convert");
+        std::fs::create_dir(&input).unwrap();
+        std::fs::write(input.join("b.xls"), b"bbb").unwrap();
+        std::fs::write(input.join("a.xls"), b"aaa").unwrap();
+        std::fs::write(input.join("ignore.txt"), b"x").unwrap();
+
+        // pre-seed the log so a.xls counts as already converted
+        let mut log = ConversionLog::new();
+        log.insert(
+            "a.xls".to_string(),
+            LogEntry {
+                hash: hash_file(&input.join("a.xls")).unwrap(),
+                converted_at: String::new(),
+                output_file: String::new(),
+            },
+        );
+        save_log(&log_path(&input), &log).unwrap();
+
+        let entries = scan_input_dir(&input).unwrap();
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].name, "a.xls");
+        assert_eq!(entries[0].status, FileStatus::Converted);
+        assert_eq!(entries[1].name, "b.xls");
+        assert_eq!(entries[1].status, FileStatus::New);
+        assert_eq!(entries[1].size, 3);
     }
 }
