@@ -1,39 +1,39 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>CRDB → ZOHO CSV Konverter</title>
+  <title>CRDB → ZOHO CSV Converter</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header>
     <div class="folder-row">
-      <span class="folder-label">Eingabe:</span>
-      <span id="input-dir" class="folder-path">– nicht gewählt –</span>
-      <button id="pick-input">Ändern…</button>
+      <span class="folder-label">Input:</span>
+      <span id="input-dir" class="folder-path">– not selected –</span>
+      <button id="pick-input">Change…</button>
     </div>
     <div class="folder-row">
-      <span class="folder-label">Ausgabe:</span>
-      <span id="output-dir" class="folder-path">– nicht gewählt –</span>
-      <button id="pick-output">Ändern…</button>
+      <span class="folder-label">Output:</span>
+      <span id="output-dir" class="folder-path">– not selected –</span>
+      <button id="pick-output">Change…</button>
     </div>
   </header>
 
   <main>
     <table id="file-table">
       <thead>
-        <tr><th>Datei</th><th>Größe</th><th>Status</th></tr>
+        <tr><th>File</th><th>Size</th><th>Status</th></tr>
       </thead>
       <tbody id="file-rows" aria-live="polite"></tbody>
     </table>
-    <p id="empty-hint" style="display:none">Keine XLS-Dateien — Eingabeordner wählen oder Dateien hierher ziehen.</p>
+    <p id="empty-hint" style="display:none">No XLS files — choose an input folder or drag files here.</p>
   </main>
 
   <footer>
-    <label><input type="checkbox" id="force"> Neu konvertieren erzwingen</label>
+    <label><input type="checkbox" id="force"> Force re-conversion</label>
     <div class="spacer"></div>
-    <button id="open-output">Ausgabeordner öffnen</button>
-    <button id="convert" class="primary">Konvertieren</button>
+    <button id="open-output">Open output folder</button>
+    <button id="convert" class="primary">Convert</button>
   </footer>
 
   <script src="main.js" defer></script>

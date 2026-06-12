@@ -14,16 +14,16 @@ const state = {
 const el = (id) => document.getElementById(id);
 
 const STATUS_LABELS = {
-  new: ["Neu", "status-new"],
-  converted: ["Bereits konvertiert", "status-converted"],
-  changed: ["Geändert", "status-changed"],
-  dropped: ["Hinzugefügt", "status-dropped"],
+  new: ["New", "status-new"],
+  converted: ["Already converted", "status-converted"],
+  changed: ["Changed", "status-changed"],
+  dropped: ["Added", "status-dropped"],
 };
 
 const RESULT_LABELS = {
-  converted: ["✓ konvertiert", "status-ok"],
-  skipped: ["⏭ übersprungen", "status-skipped"],
-  error: ["✗ Fehler", "status-error"],
+  converted: ["✓ converted", "status-ok"],
+  skipped: ["⏭ skipped", "status-skipped"],
+  error: ["✗ error", "status-error"],
 };
 
 function fmtSize(bytes) {
@@ -55,7 +55,7 @@ function render() {
       [label, cls] = RESULT_LABELS[result.status] ?? [result.status, ""];
       if (result.status === "error") detail = result.message;
       if (result.warnings?.length) {
-        detail = `${result.warnings.length} Warnung(en): ${result.warnings.join(" | ")}`;
+        detail = `${result.warnings.length} warning(s): ${result.warnings.join(" | ")}`;
       }
     } else {
       [label, cls] = STATUS_LABELS[f.status ?? "dropped"] ?? ["?", ""];
@@ -81,8 +81,8 @@ function render() {
     rows.appendChild(tr);
   }
 
-  el("input-dir").textContent = state.inputDir ?? "– nicht gewählt –";
-  el("output-dir").textContent = state.outputDir ?? "– nicht gewählt –";
+  el("input-dir").textContent = state.inputDir ?? "– not selected –";
+  el("output-dir").textContent = state.outputDir ?? "– not selected –";
   el("convert").disabled =
     state.converting || !(state.inputDir && state.outputDir && files.length);
   el("open-output").disabled = !state.outputDir;
@@ -98,14 +98,14 @@ async function rescan() {
     state.scanned = res.files;                                              // ★
     if (res.log_warning) alert(res.log_warning);                            // ★ surface corrupt-log warning
   } catch (e) {
-    alert(`Eingabeordner kann nicht gelesen werden:\n${e}`);
+    alert(`Cannot read input folder:\n${e}`);
     state.scanned = [];
   }
   render();
 }
 
 async function pickFolder(which) {
-  const dir = await open({ directory: true, title: `${which === "input" ? "Eingabe" : "Ausgabe"}ordner wählen` });
+  const dir = await open({ directory: true, title: `Choose ${which} folder` });
   if (!dir) return;
   if (which === "input") {
     state.inputDir = dir;
@@ -119,7 +119,7 @@ async function pickFolder(which) {
       config: { input_dir: state.inputDir, output_dir: state.outputDir },
     });
   } catch (e) {
-    console.error("Konfiguration konnte nicht gespeichert werden:", e);     // ★
+    console.error("Could not save configuration:", e);                       // ★
   }
   render();
 }
@@ -138,7 +138,7 @@ async function convert() {
       force: el("force").checked,
     });
   } catch (e) {
-    alert(`Konvertierung fehlgeschlagen:\n${e}`);
+    alert(`Conversion failed:\n${e}`);
   } finally {
     state.converting = false;
     await rescan(); // refresh pre-conversion statuses from the updated log
@@ -177,7 +177,7 @@ async function init() {
     await rescan();
     render();
   } catch (e) {
-    alert(`Initialisierung fehlgeschlagen:\n${e}`);
+    alert(`Initialization failed:\n${e}`);
   }
 }
 
