@@ -24,6 +24,18 @@ pub fn clean_reference(raw: &str) -> String {
     collapsed.chars().take(99).collect()
 }
 
+pub fn format_amount(v: f64) -> String {
+    format!("{v:?}")
+}
+
+pub fn csv_field(field: &str) -> String {
+    if field.contains(';') || field.contains('"') || field.contains('\n') || field.contains('\r') {
+        format!("\"{}\"", field.replace('"', "\"\""))
+    } else {
+        field.to_string()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -80,5 +92,31 @@ mod tests {
         let result = clean_reference(&umlauts);
         assert_eq!(result.chars().count(), 99);
         assert_eq!(result, "ä".repeat(99));
+    }
+
+    #[test]
+    fn format_amount_matches_python_str() {
+        assert_eq!(format_amount(977000.0), "977000.0");
+        assert_eq!(format_amount(0.0), "0.0");
+        assert_eq!(format_amount(304.92), "304.92");
+        assert_eq!(format_amount(1694.0), "1694.0");
+    }
+
+    #[test]
+    fn csv_field_plain_passthrough() {
+        assert_eq!(csv_field("Transfer"), "Transfer");
+        assert_eq!(csv_field(""), "");
+    }
+
+    #[test]
+    fn csv_field_quotes_when_needed() {
+        assert_eq!(csv_field("a;b"), "\"a;b\"");
+        assert_eq!(csv_field("say \"hi\""), "\"say \"\"hi\"\"\"");
+    }
+
+    #[test]
+    fn clean_reference_empty_and_whitespace_only() {
+        assert_eq!(clean_reference(""), "");
+        assert_eq!(clean_reference("   "), "");
     }
 }
