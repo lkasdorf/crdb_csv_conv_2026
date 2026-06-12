@@ -70,6 +70,8 @@ logic (`gui/src-tauri/src/converter.rs`, byte-exact vs the Python output, proven
 input dir — with `to_convert/` selected that is the same `.conversion_log.json`
 the Python CLI uses, so GUI and CLI share dedup state. Frontend is static
 HTML/CSS/JS in `gui/src/` (no Node toolchain). The Python CLI remains unchanged.
+Note: `gui/src-tauri/Cargo.toml` pins `time = ">=0.3, <0.3.38"` to dodge an E0119
+trait conflict in `tauri-utils 2.9.x` — re-check the pin before any `cargo update`.
 
 ## Modifying the Code
 
