@@ -26,13 +26,13 @@ pub fn load_log(path: &Path) -> (ConversionLog, Option<String>) {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => (ConversionLog::new(), None),
         Err(e) => (
             ConversionLog::new(),
-            Some(format!("Log unlesbar, beginne neu: {e}")),
+            Some(format!("Log unreadable, starting fresh: {e}")),
         ),
         Ok(text) => match serde_json::from_str(&text) {
             Ok(log) => (log, None),
             Err(e) => (
                 ConversionLog::new(),
-                Some(format!("Log unlesbar, beginne neu: {e}")),
+                Some(format!("Log unreadable, starting fresh: {e}")),
             ),
         },
     }
@@ -132,7 +132,7 @@ fn process_one(
         return Ok(ConvertOutcome {
             name: name.to_string(),
             status: "skipped".to_string(),
-            message: "bereits konvertiert".to_string(),
+            message: "already converted".to_string(),
             warnings: Vec::new(),
         });
     }
@@ -167,7 +167,7 @@ fn process_one(
     Ok(ConvertOutcome {
         name: name.to_string(),
         status: "converted".to_string(),
-        message: format!("{} Zeilen", conversion.rows),
+        message: format!("{} rows", conversion.rows),
         warnings: conversion.warnings,
     })
 }

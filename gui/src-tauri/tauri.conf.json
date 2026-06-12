@@ -10,7 +10,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "CRDB → ZOHO CSV Konverter",
+        "title": "CRDB → ZOHO CSV Converter",
         "width": 900,
         "height": 650,
         "dragDropEnabled": true

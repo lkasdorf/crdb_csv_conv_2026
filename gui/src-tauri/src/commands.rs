@@ -63,7 +63,7 @@ pub fn convert_files(
 pub fn open_folder(path: String) -> Result<(), String> {
     // explorer/xdg-open silently no-op on bad paths; validate for a truthful result
     if !Path::new(&path).is_dir() {
-        return Err(format!("Ordner nicht gefunden: {path}"));
+        return Err(format!("Folder not found: {path}"));
     }
     #[cfg(target_os = "windows")]
     let result = std::process::Command::new("explorer").arg(&path).spawn();
