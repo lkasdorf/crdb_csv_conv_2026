@@ -71,7 +71,7 @@ pub fn log_path(input_dir: &Path) -> PathBuf {
     }
 }
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Clone, Debug)]
 pub struct FileEntry {
     pub name: String,
     pub path: String,
