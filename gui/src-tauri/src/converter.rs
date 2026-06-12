@@ -19,6 +19,11 @@ pub fn parse_amount(raw: &str) -> Result<f64, String> {
         .map_err(|e| format!("invalid amount {raw:?}: {e}"))
 }
 
+pub fn clean_reference(raw: &str) -> String {
+    let collapsed = raw.split_whitespace().collect::<Vec<_>>().join(" ");
+    collapsed.chars().take(99).collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -53,5 +58,27 @@ mod tests {
     #[test]
     fn parse_amount_rejects_garbage() {
         assert!(parse_amount("abc").is_err());
+    }
+
+    #[test]
+    fn clean_reference_collapses_whitespace() {
+        assert_eq!(
+            clean_reference("  E-COM   Purchase\t VISA \n POS  "),
+            "E-COM Purchase VISA POS"
+        );
+    }
+
+    #[test]
+    fn clean_reference_truncates_to_99_chars() {
+        let long = "x".repeat(150);
+        assert_eq!(clean_reference(&long).chars().count(), 99);
+    }
+
+    #[test]
+    fn clean_reference_truncates_by_chars_not_bytes() {
+        let umlauts = "ä".repeat(150); // 2 bytes per char in UTF-8
+        let result = clean_reference(&umlauts);
+        assert_eq!(result.chars().count(), 99);
+        assert_eq!(result, "ä".repeat(99));
     }
 }
