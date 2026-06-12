@@ -97,6 +97,27 @@ pub fn get_app_info() -> AppInfo {
     app_info()
 }
 
+const ALLOWED_URL_PREFIX: &str = "https://github.com/lkasdorf/crdb_csv_conv_2026";
+
+fn is_allowed_url(url: &str) -> bool {
+    url == ALLOWED_URL_PREFIX
+        || url
+            .strip_prefix(ALLOWED_URL_PREFIX)
+            .is_some_and(|rest| rest.starts_with('/') || rest.starts_with('?') || rest.starts_with('#'))
+}
+
+#[tauri::command]
+pub fn open_url(url: String) -> Result<(), String> {
+    if !is_allowed_url(&url) {
+        return Err(format!("URL not allowed: {url}"));
+    }
+    #[cfg(target_os = "windows")]
+    let result = std::process::Command::new("explorer").arg(&url).spawn();
+    #[cfg(not(target_os = "windows"))]
+    let result = std::process::Command::new("xdg-open").arg(&url).spawn();
+    result.map(|_| ()).map_err(|e| e.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -108,5 +129,22 @@ mod tests {
         assert_eq!(info.version, env!("CARGO_PKG_VERSION"));
         assert!(info.license_text.contains("MIT License"));
         assert!(info.license_text.contains("Leon Kasdorf"));
+    }
+
+    #[test]
+    fn allowlist_accepts_repo_urls() {
+        assert!(is_allowed_url("https://github.com/lkasdorf/crdb_csv_conv_2026"));
+        assert!(is_allowed_url("https://github.com/lkasdorf/crdb_csv_conv_2026/issues"));
+        assert!(is_allowed_url(
+            "https://github.com/lkasdorf/crdb_csv_conv_2026/releases/tag/v0.1.0-dev"
+        ));
+    }
+
+    #[test]
+    fn allowlist_rejects_foreign_urls() {
+        assert!(!is_allowed_url("https://evil.example.com/"));
+        assert!(!is_allowed_url("http://github.com/lkasdorf/crdb_csv_conv_2026"));
+        assert!(!is_allowed_url("https://github.com/lkasdorf/crdb_csv_conv_2026evil"));
+        assert!(!is_allowed_url("file:///C:/Windows"));
     }
 }
