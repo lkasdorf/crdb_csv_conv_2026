@@ -161,20 +161,25 @@ async function convert() {
 // --- menu bar ---
 function closeMenus() {
   document.querySelectorAll(".menu-dropdown").forEach((d) => d.classList.remove("open"));
+  document.querySelectorAll("[data-menu-btn]").forEach((b) => b.setAttribute("aria-expanded", "false"));
 }
 
 function toggleMenu(name) {
   const dropdown = el(`menu-${name}`);
   const wasOpen = dropdown.classList.contains("open");
   closeMenus();
-  if (!wasOpen) dropdown.classList.add("open");
+  if (!wasOpen) {
+    dropdown.classList.add("open");
+    document.querySelector(`[data-menu-btn="${name}"]`)?.setAttribute("aria-expanded", "true");
+  }
 }
 
 function showLog() {
   if (!state.inputDir) return;
   // mirror the backend log_path rule: the log lives in the parent of the
   // input dir; with no usable parent it falls back into the input dir
-  const parent = state.inputDir.replace(/[\\/][^\\/]+[\\/]?$/, "");
+  let parent = state.inputDir.replace(/[\\/][^\\/]+[\\/]?$/, "");
+  if (/^[A-Za-z]:$/.test(parent)) parent += "\\"; // "C:" is drive-relative — anchor it
   invoke("open_folder", { path: parent || state.inputDir }).catch((e) => alert(e));
 }
 
@@ -193,16 +198,22 @@ const MENU_ACTIONS = {
 };
 
 // --- modal ---
+let modalInvoker = null;
+
 function openModal(title, bodyNode) {
+  modalInvoker = document.activeElement;
   el("modal-title").textContent = title;
   const body = el("modal-body");
   body.innerHTML = "";
   body.appendChild(bodyNode);
   el("modal-overlay").style.display = "flex";
+  el("modal-close").focus();
 }
 
 function closeModal() {
   el("modal-overlay").style.display = "none";
+  if (modalInvoker?.focus) modalInvoker.focus();
+  modalInvoker = null;
 }
 
 // --- dialogs (innerHTML below contains only static, trusted markup) ---

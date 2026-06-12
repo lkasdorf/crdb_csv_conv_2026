@@ -8,20 +8,20 @@
 <body>
   <nav id="menubar">
     <div class="menu">
-      <button class="menu-title" data-menu-btn="file">File</button>
+      <button class="menu-title" data-menu-btn="file" aria-haspopup="menu" aria-expanded="false">File</button>
       <div class="menu-dropdown" id="menu-file">
         <button class="menu-item" data-action="pick-input">Choose input folder…<span class="shortcut">Ctrl+O</span></button>
         <button class="menu-item" data-action="pick-output">Choose output folder…<span class="shortcut">Ctrl+Shift+O</span></button>
         <button class="menu-item" data-action="rescan">Rescan<span class="shortcut">F5</span></button>
         <button class="menu-item" data-action="convert">Convert<span class="shortcut">Ctrl+Enter</span></button>
         <hr>
-        <button class="menu-item" data-action="show-log">Show conversion log</button>
+        <button class="menu-item" data-action="show-log">Open log folder</button>
         <hr>
         <button class="menu-item" data-action="exit">Exit</button>
       </div>
     </div>
     <div class="menu">
-      <button class="menu-title" data-menu-btn="help">Help</button>
+      <button class="menu-title" data-menu-btn="help" aria-haspopup="menu" aria-expanded="false">Help</button>
       <div class="menu-dropdown" id="menu-help">
         <button class="menu-item" data-action="help">Help<span class="shortcut">F1</span></button>
         <hr>
