@@ -1,0 +1,169 @@
+const { invoke } = window.__TAURI__.core;
+const { open } = window.__TAURI__.dialog;
+const { listen } = window.__TAURI__.event;
+
+const state = {
+  inputDir: null,
+  outputDir: null,
+  scanned: [],   // FileEntry from scan_files
+  dropped: [],   // { name, path } added via drag & drop
+  results: {},   // name -> ConvertOutcome
+};
+
+const el = (id) => document.getElementById(id);
+
+const STATUS_LABELS = {
+  new: ["Neu", "status-new"],
+  converted: ["Bereits konvertiert", "status-converted"],
+  changed: ["Geändert", "status-changed"],
+  dropped: ["Hinzugefügt", "status-dropped"],
+};
+
+const RESULT_LABELS = {
+  converted: ["✓ konvertiert", "status-ok"],
+  skipped: ["⏭ übersprungen", "status-skipped"],
+  error: ["✗ Fehler", "status-error"],
+};
+
+function fmtSize(bytes) {
+  if (bytes == null) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  return `${(bytes / 1024).toFixed(1)} KB`;
+}
+
+function allFiles() {
+  const scannedPaths = new Set(state.scanned.map((f) => f.path));
+  const extra = state.dropped.filter((f) => !scannedPaths.has(f.path));
+  return [...state.scanned, ...extra];
+}
+
+function render() {
+  const rows = el("file-rows");
+  rows.innerHTML = "";
+  const files = allFiles();
+  el("empty-hint").style.display = files.length ? "none" : "block";
+
+  for (const f of files) {
+    const tr = document.createElement("tr");
+    const result = state.results[f.name];
+    let label, cls, detail = "";
+    if (result) {
+      [label, cls] = RESULT_LABELS[result.status] ?? [result.status, ""];
+      if (result.status === "error") detail = result.message;
+      if (result.warnings?.length) {
+        detail = `${result.warnings.length} Warnung(en): ${result.warnings.join(" | ")}`;
+      }
+    } else {
+      [label, cls] = STATUS_LABELS[f.status ?? "dropped"] ?? ["?", ""];
+    }
+
+    const tdName = document.createElement("td");
+    tdName.textContent = f.name;
+    const tdSize = document.createElement("td");
+    tdSize.className = "size";
+    tdSize.textContent = fmtSize(f.size);
+    const tdStatus = document.createElement("td");
+    const span = document.createElement("span");
+    span.className = cls;
+    span.textContent = label;
+    tdStatus.appendChild(span);
+    if (detail) {
+      const div = document.createElement("div");
+      div.className = "warnings";
+      div.textContent = detail;
+      tdStatus.appendChild(div);
+    }
+    tr.append(tdName, tdSize, tdStatus);
+    rows.appendChild(tr);
+  }
+
+  el("input-dir").textContent = state.inputDir ?? "– nicht gewählt –";
+  el("output-dir").textContent = state.outputDir ?? "– nicht gewählt –";
+  el("convert").disabled = !(state.inputDir && state.outputDir && files.length);
+  el("open-output").disabled = !state.outputDir;
+}
+
+async function rescan() {
+  if (!state.inputDir) return;
+  try {
+    const res = await invoke("scan_files", { inputDir: state.inputDir });   // ★ scan_files returns {files, log_warning}
+    state.scanned = res.files;                                              // ★
+    if (res.log_warning) alert(res.log_warning);                            // ★ surface corrupt-log warning
+  } catch (e) {
+    alert(`Eingabeordner kann nicht gelesen werden:\n${e}`);
+    state.scanned = [];
+  }
+  render();
+}
+
+async function pickFolder(which) {
+  const dir = await open({ directory: true, title: `${which === "input" ? "Eingabe" : "Ausgabe"}ordner wählen` });
+  if (!dir) return;
+  if (which === "input") {
+    state.inputDir = dir;
+    state.results = {};
+    await rescan();
+  } else {
+    state.outputDir = dir;
+  }
+  try {                                                                     // ★ save_config failures must be surfaced, not unhandled
+    await invoke("save_config", {
+      config: { input_dir: state.inputDir, output_dir: state.outputDir },
+    });
+  } catch (e) {
+    console.error("Konfiguration konnte nicht gespeichert werden:", e);     // ★
+  }
+  render();
+}
+
+async function convert() {
+  const files = allFiles().map((f) => f.path);
+  state.results = {};
+  render();
+  el("convert").disabled = true;
+  try {
+    await invoke("convert_files", {
+      inputDir: state.inputDir,
+      files,
+      outputDir: state.outputDir,
+      force: el("force").checked,
+    });
+  } catch (e) {
+    alert(`Konvertierung fehlgeschlagen:\n${e}`);
+  }
+  await rescan(); // refresh pre-conversion statuses from the updated log
+}
+
+async function init() {
+  el("pick-input").addEventListener("click", () => pickFolder("input"));
+  el("pick-output").addEventListener("click", () => pickFolder("output"));
+  el("convert").addEventListener("click", convert);
+  el("open-output").addEventListener("click", () => {
+    invoke("open_folder", { path: state.outputDir }).catch((e) => alert(e));
+  });
+
+  // live per-file status during conversion
+  await listen("file-status", (event) => {
+    state.results[event.payload.name] = event.payload;
+    render();
+  });
+
+  // drag & drop of additional .xls files from anywhere
+  await listen("tauri://drag-drop", (event) => {
+    for (const p of event.payload.paths ?? []) {
+      if (!p.toLowerCase().endsWith(".xls")) continue;
+      if (state.dropped.some((f) => f.path === p)) continue;
+      const name = p.split(/[\\/]/).pop();
+      state.dropped.push({ name, path: p });
+    }
+    render();
+  });
+
+  const config = await invoke("load_config");
+  state.inputDir = config.input_dir ?? null;
+  state.outputDir = config.output_dir ?? null;
+  await rescan();
+  render();
+}
+
+init();

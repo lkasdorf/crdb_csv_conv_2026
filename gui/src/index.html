@@ -1,5 +1,41 @@
 <!doctype html>
 <html lang="de">
-  <head><meta charset="utf-8"><title>CRDB → ZOHO CSV Konverter</title></head>
-  <body><h1>Scaffold OK</h1></body>
+<head>
+  <meta charset="utf-8">
+  <title>CRDB → ZOHO CSV Konverter</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="folder-row">
+      <span class="folder-label">Eingabe:</span>
+      <span id="input-dir" class="folder-path">– nicht gewählt –</span>
+      <button id="pick-input">Ändern…</button>
+    </div>
+    <div class="folder-row">
+      <span class="folder-label">Ausgabe:</span>
+      <span id="output-dir" class="folder-path">– nicht gewählt –</span>
+      <button id="pick-output">Ändern…</button>
+    </div>
+  </header>
+
+  <main>
+    <table id="file-table">
+      <thead>
+        <tr><th>Datei</th><th>Größe</th><th>Status</th></tr>
+      </thead>
+      <tbody id="file-rows"></tbody>
+    </table>
+    <p id="empty-hint">Keine XLS-Dateien — Eingabeordner wählen oder Dateien hierher ziehen.</p>
+  </main>
+
+  <footer>
+    <label><input type="checkbox" id="force"> Neu konvertieren erzwingen</label>
+    <div class="spacer"></div>
+    <button id="open-output">Ausgabeordner öffnen</button>
+    <button id="convert" class="primary">Konvertieren</button>
+  </footer>
+
+  <script src="main.js" defer></script>
+</body>
 </html>
