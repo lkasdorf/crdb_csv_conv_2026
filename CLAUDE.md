@@ -31,15 +31,15 @@ rm .conversion_log.json
 # Push to GitHub
 git push
 
-# GUI (Tauri) — dev run and release build (from gui/src-tauri/)
-cargo tauri dev
-cargo tauri build
+# GUI (Tauri) — dev run and release build
+cd gui/src-tauri && cargo tauri dev
+cd gui/src-tauri && cargo tauri build
 
 # GUI tests (includes byte-exact reference test against example/)
 cd gui/src-tauri && cargo test
 ```
 
-Only dependency: `xlrd` (reads legacy Excel 97-2003 CDFV2 `.xls` format).
+Only Python dependency: `xlrd` (reads legacy Excel 97-2003 CDFV2 `.xls` format). The GUI adds Rust/Cargo dependencies (see `gui/src-tauri/Cargo.toml`).
 
 ## Architecture
 
