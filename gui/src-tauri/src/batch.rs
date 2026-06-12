@@ -27,6 +27,7 @@ mod tests {
     fn hash_file_known_sha256() {
         let mut f = tempfile::NamedTempFile::new().unwrap();
         f.write_all(b"hello").unwrap();
+        f.flush().unwrap();
         // echo -n hello | sha256sum
         assert_eq!(
             hash_file(f.path()).unwrap(),
@@ -45,5 +46,12 @@ mod tests {
         // bare relative dir: parent() is Some("") — must not use it
         let p = log_path(Path::new("to_convert"));
         assert_eq!(p, PathBuf::from("to_convert/.conversion_log.json"));
+    }
+
+    #[test]
+    fn log_path_falls_back_for_drive_root() {
+        // Path::new("C:/").parent() is None on Windows — distinct from the Some("") case
+        let p = log_path(Path::new("C:/"));
+        assert_eq!(p, PathBuf::from("C:/.conversion_log.json"));
     }
 }
