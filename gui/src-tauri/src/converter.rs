@@ -12,6 +12,13 @@ pub fn parse_date(raw: &str) -> Result<String, String> {
     Ok(format!("{}-{:0>2}-{:0>2}", parts[2], parts[1], parts[0]))
 }
 
+pub fn parse_amount(raw: &str) -> Result<f64, String> {
+    raw.trim()
+        .replace(',', "")
+        .parse::<f64>()
+        .map_err(|e| format!("invalid amount {raw:?}: {e}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -30,5 +37,21 @@ mod tests {
     fn parse_date_rejects_garbage() {
         assert!(parse_date("not a date").is_err());
         assert!(parse_date("   ").is_err());
+    }
+
+    #[test]
+    fn parse_amount_with_thousands_separator() {
+        assert_eq!(parse_amount(" 977,000.00").unwrap(), 977000.0);
+    }
+
+    #[test]
+    fn parse_amount_zero_and_plain() {
+        assert_eq!(parse_amount(" 0.00").unwrap(), 0.0);
+        assert_eq!(parse_amount("304.92").unwrap(), 304.92);
+    }
+
+    #[test]
+    fn parse_amount_rejects_garbage() {
+        assert!(parse_amount("abc").is_err());
     }
 }
