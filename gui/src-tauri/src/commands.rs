@@ -1,0 +1,66 @@
+use std::path::{Path, PathBuf};
+use tauri::{Emitter, Manager};
+
+use crate::batch;
+
+#[derive(serde::Serialize, serde::Deserialize, Default)]
+pub struct AppConfig {
+    pub input_dir: Option<String>,
+    pub output_dir: Option<String>,
+}
+
+fn config_file(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let dir = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir.join("config.json"))
+}
+
+#[tauri::command]
+pub fn load_config(app: tauri::AppHandle) -> AppConfig {
+    config_file(&app)
+        .ok()
+        .and_then(|p| std::fs::read_to_string(p).ok())
+        .and_then(|text| serde_json::from_str(&text).ok())
+        .unwrap_or_default()
+}
+
+#[tauri::command]
+pub fn save_config(app: tauri::AppHandle, config: AppConfig) -> Result<(), String> {
+    let path = config_file(&app)?;
+    let json = serde_json::to_string_pretty(&config).map_err(|e| e.to_string())?;
+    std::fs::write(path, json).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn scan_files(input_dir: String) -> Result<batch::ScanResult, String> {
+    batch::scan_input_dir(Path::new(&input_dir))
+}
+
+#[tauri::command]
+pub fn convert_files(
+    app: tauri::AppHandle,
+    input_dir: String,
+    files: Vec<String>,
+    output_dir: String,
+    force: bool,
+) -> Result<Vec<batch::ConvertOutcome>, String> {
+    let paths: Vec<PathBuf> = files.into_iter().map(PathBuf::from).collect();
+    batch::convert_files(
+        Path::new(&input_dir),
+        &paths,
+        Path::new(&output_dir),
+        force,
+        |outcome| {
+            let _ = app.emit("file-status", outcome);
+        },
+    )
+}
+
+#[tauri::command]
+pub fn open_folder(path: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    let result = std::process::Command::new("explorer").arg(&path).spawn();
+    #[cfg(not(target_os = "windows"))]
+    let result = std::process::Command::new("xdg-open").arg(&path).spawn();
+    result.map(|_| ()).map_err(|e| e.to_string())
+}

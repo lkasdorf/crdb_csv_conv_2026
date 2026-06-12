@@ -180,8 +180,14 @@ pub struct FileEntry {
     pub status: FileStatus,
 }
 
-pub fn scan_input_dir(input_dir: &Path) -> Result<Vec<FileEntry>, String> {
-    let (log, _) = load_log(&log_path(input_dir));
+#[derive(Serialize, Clone, Debug)]
+pub struct ScanResult {
+    pub files: Vec<FileEntry>,
+    pub log_warning: Option<String>,
+}
+
+pub fn scan_input_dir(input_dir: &Path) -> Result<ScanResult, String> {
+    let (log, log_warning) = load_log(&log_path(input_dir));
     let rd = std::fs::read_dir(input_dir)
         .map_err(|e| format!("cannot read {}: {e}", input_dir.display()))?;
 
@@ -209,7 +215,7 @@ pub fn scan_input_dir(input_dir: &Path) -> Result<Vec<FileEntry>, String> {
         });
     }
     entries.sort_by(|a, b| a.name.cmp(&b.name));
-    Ok(entries)
+    Ok(ScanResult { files: entries, log_warning })
 }
 
 #[cfg(test)]
@@ -433,12 +439,27 @@ mod tests {
         );
         save_log(&log_path(&input), &log).unwrap();
 
-        let entries = scan_input_dir(&input).unwrap();
-        assert_eq!(entries.len(), 2);
-        assert_eq!(entries[0].name, "a.xls");
-        assert_eq!(entries[0].status, FileStatus::Converted);
-        assert_eq!(entries[1].name, "b.xls");
-        assert_eq!(entries[1].status, FileStatus::New);
-        assert_eq!(entries[1].size, 3);
+        let result = scan_input_dir(&input).unwrap();
+        assert_eq!(result.files.len(), 2);
+        assert_eq!(result.files[0].name, "a.xls");
+        assert_eq!(result.files[0].status, FileStatus::Converted);
+        assert_eq!(result.files[1].name, "b.xls");
+        assert_eq!(result.files[1].status, FileStatus::New);
+        assert_eq!(result.files[1].size, 3);
+        assert!(result.log_warning.is_none());
+    }
+
+    #[test]
+    fn scan_surfaces_corrupt_log_warning() {
+        let root = tempfile::tempdir().unwrap();
+        let input = root.path().join("to_convert");
+        std::fs::create_dir(&input).unwrap();
+        std::fs::write(input.join("a.xls"), b"aaa").unwrap();
+        std::fs::write(log_path(&input), "{ not json").unwrap();
+
+        let result = scan_input_dir(&input).unwrap();
+        assert_eq!(result.files.len(), 1);
+        assert_eq!(result.files[0].status, FileStatus::New);
+        assert!(result.log_warning.is_some());
     }
 }
