@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- GUI: in-app menu (File/Help) with Help, About, scrollable MIT license view,
+  GitHub update check and report-issue link; keyboard shortcuts; real app icon
+  (SVG source); entire UI switched to English. App version 0.2.0.
+- MIT license (`LICENSE`), embedded in the app and shown by the installers.
 - Tauri v2 desktop GUI (Windows + Linux) with batch conversion, SHA256 dedup
   shared with the Python CLI, drag & drop, and byte-exact Rust port of the
   conversion logic verified against the reference CSV.

@@ -175,3 +175,7 @@ ls -l converted/
 ```
 
 This converts the example XLS file into a ZOHO Books compatible CSV file.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

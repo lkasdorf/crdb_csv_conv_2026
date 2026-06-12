@@ -72,6 +72,10 @@ the Python CLI uses, so GUI and CLI share dedup state. Frontend is static
 HTML/CSS/JS in `gui/src/` (no Node toolchain). The Python CLI remains unchanged.
 Note: `gui/src-tauri/Cargo.toml` pins `time = ">=0.3, <0.3.38"` to dodge an E0119
 trait conflict in `tauri-utils 2.9.x` — re-check the pin before any `cargo update`.
+The GUI is English-only and has an HTML menu bar (File/Help) with About/License/
+update-check dialogs; `LICENSE` (MIT) is embedded via `include_str!` in
+`commands.rs`. The icon source is `gui/src-tauri/app-icon.svg` (rendered with
+`resvg`, then `cargo tauri icon`).
 
 ## Modifying the Code
 
