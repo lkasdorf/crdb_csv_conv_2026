@@ -2,6 +2,7 @@
 name = "crdb-csv-gui"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
 
 [lib]
 name = "crdb_csv_gui_lib"
