@@ -43,6 +43,75 @@ pub fn csv_field(field: &str) -> String {
     }
 }
 
+use std::path::Path;
+
+pub struct Conversion {
+    pub rows: usize,
+    pub warnings: Vec<String>,
+}
+
+pub fn convert_xls_to_csv(xls_path: &Path, csv_path: &Path) -> Result<Conversion, String> {
+    use calamine::{open_workbook, Reader, Xls};
+
+    let mut workbook: Xls<_> = open_workbook(xls_path)
+        .map_err(|e| format!("cannot open {}: {e}", xls_path.display()))?;
+    let range = workbook
+        .worksheet_range_at(0)
+        .ok_or_else(|| "no sheet found in workbook".to_string())?
+        .map_err(|e| e.to_string())?;
+    // The used range may not start at A1; convert to absolute row indices.
+    let start_row = range.start().map(|(r, _)| r as usize).unwrap_or(0);
+
+    let mut out = String::new();
+    out.push_str("Date;Withdrawals;Deposits;Payee;Description;Reference Number\n");
+    let mut warnings = Vec::new();
+    let mut rows = 0usize;
+
+    for (i, row) in range.rows().enumerate() {
+        let abs = start_row + i;
+        if abs < 15 {
+            continue; // rows 0-13 metadata, row 14 column headers
+        }
+        let cell = |idx: usize| row.get(idx).map(|c| c.to_string()).unwrap_or_default();
+
+        let posting_date = cell(0);
+        if posting_date.trim().is_empty() {
+            continue; // skip empty rows, same as the Python converter
+        }
+
+        match (
+            parse_date(&posting_date),
+            parse_amount(&cell(3)),
+            parse_amount(&cell(4)),
+        ) {
+            (Ok(date), Ok(withdrawals), Ok(deposits)) => {
+                let reference = clean_reference(&cell(1));
+                out.push_str(&format!(
+                    "{};{};{};;Transfer;{}\n",
+                    csv_field(&date),
+                    csv_field(&format_amount(withdrawals)),
+                    csv_field(&format_amount(deposits)),
+                    csv_field(&reference)
+                ));
+                rows += 1;
+            }
+            (d, w, c) => {
+                let msg = [d.err(), w.err(), c.err()]
+                    .into_iter()
+                    .flatten()
+                    .collect::<Vec<_>>()
+                    .join("; ");
+                warnings.push(format!("row {abs}: {msg}"));
+            }
+        }
+    }
+
+    std::fs::write(csv_path, out.as_bytes())
+        .map_err(|e| format!("cannot write {}: {e}", csv_path.display()))?;
+
+    Ok(Conversion { rows, warnings })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
