@@ -6,6 +6,33 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <nav id="menubar">
+    <div class="menu">
+      <button class="menu-title" data-menu-btn="file">File</button>
+      <div class="menu-dropdown" id="menu-file">
+        <button class="menu-item" data-action="pick-input">Choose input folder…<span class="shortcut">Ctrl+O</span></button>
+        <button class="menu-item" data-action="pick-output">Choose output folder…<span class="shortcut">Ctrl+Shift+O</span></button>
+        <button class="menu-item" data-action="rescan">Rescan<span class="shortcut">F5</span></button>
+        <button class="menu-item" data-action="convert">Convert<span class="shortcut">Ctrl+Enter</span></button>
+        <hr>
+        <button class="menu-item" data-action="show-log">Show conversion log</button>
+        <hr>
+        <button class="menu-item" data-action="exit">Exit</button>
+      </div>
+    </div>
+    <div class="menu">
+      <button class="menu-title" data-menu-btn="help">Help</button>
+      <div class="menu-dropdown" id="menu-help">
+        <button class="menu-item" data-action="help">Help<span class="shortcut">F1</span></button>
+        <hr>
+        <button class="menu-item" data-action="check-updates">Check for updates…</button>
+        <button class="menu-item" data-action="report-issue">Report an issue…</button>
+        <hr>
+        <button class="menu-item" data-action="license">License</button>
+        <button class="menu-item" data-action="about">About CRDB CSV Converter</button>
+      </div>
+    </div>
+  </nav>
   <header>
     <div class="folder-row">
       <span class="folder-label">Input:</span>
@@ -35,6 +62,16 @@
     <button id="open-output">Open output folder</button>
     <button id="convert" class="primary">Convert</button>
   </footer>
+
+  <div id="modal-overlay" style="display:none">
+    <div id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div id="modal-header">
+        <h2 id="modal-title"></h2>
+        <button id="modal-close" aria-label="Close">×</button>
+      </div>
+      <div id="modal-body"></div>
+    </div>
+  </div>
 
   <script src="main.js" defer></script>
 </body>
