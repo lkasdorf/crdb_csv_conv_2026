@@ -21,9 +21,9 @@ const STATUS_LABELS = {
 };
 
 const RESULT_LABELS = {
-  converted: ["✓ converted", "status-ok"],
-  skipped: ["⏭ skipped", "status-skipped"],
-  error: ["✗ error", "status-error"],
+  converted: ["✓ Converted", "status-ok"],
+  skipped: ["⏭ Skipped", "status-skipped"],
+  error: ["✗ Error", "status-error"],
 };
 
 function fmtSize(bytes) {
