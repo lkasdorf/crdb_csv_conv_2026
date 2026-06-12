@@ -8,6 +8,7 @@ const state = {
   scanned: [],   // FileEntry from scan_files
   dropped: [],   // { name, path } added via drag & drop
   results: {},   // name -> ConvertOutcome
+  converting: false,
 };
 
 const el = (id) => document.getElementById(id);
@@ -28,7 +29,8 @@ const RESULT_LABELS = {
 function fmtSize(bytes) {
   if (bytes == null) return "";
   if (bytes < 1024) return `${bytes} B`;
-  return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function allFiles() {
@@ -45,6 +47,8 @@ function render() {
 
   for (const f of files) {
     const tr = document.createElement("tr");
+    // keyed by basename — two files with the same name share one outcome,
+    // mirroring the documented log limitation
     const result = state.results[f.name];
     let label, cls, detail = "";
     if (result) {
@@ -79,8 +83,12 @@ function render() {
 
   el("input-dir").textContent = state.inputDir ?? "– nicht gewählt –";
   el("output-dir").textContent = state.outputDir ?? "– nicht gewählt –";
-  el("convert").disabled = !(state.inputDir && state.outputDir && files.length);
+  el("convert").disabled =
+    state.converting || !(state.inputDir && state.outputDir && files.length);
   el("open-output").disabled = !state.outputDir;
+  el("pick-input").disabled = state.converting;
+  el("pick-output").disabled = state.converting;
+  el("force").disabled = state.converting;
 }
 
 async function rescan() {
@@ -117,10 +125,11 @@ async function pickFolder(which) {
 }
 
 async function convert() {
+  if (state.converting) return;
+  state.converting = true;
   const files = allFiles().map((f) => f.path);
   state.results = {};
   render();
-  el("convert").disabled = true;
   try {
     await invoke("convert_files", {
       inputDir: state.inputDir,
@@ -130,40 +139,46 @@ async function convert() {
     });
   } catch (e) {
     alert(`Konvertierung fehlgeschlagen:\n${e}`);
+  } finally {
+    state.converting = false;
+    await rescan(); // refresh pre-conversion statuses from the updated log
   }
-  await rescan(); // refresh pre-conversion statuses from the updated log
 }
 
 async function init() {
-  el("pick-input").addEventListener("click", () => pickFolder("input"));
-  el("pick-output").addEventListener("click", () => pickFolder("output"));
-  el("convert").addEventListener("click", convert);
-  el("open-output").addEventListener("click", () => {
-    invoke("open_folder", { path: state.outputDir }).catch((e) => alert(e));
-  });
+  try {
+    el("pick-input").addEventListener("click", () => pickFolder("input"));
+    el("pick-output").addEventListener("click", () => pickFolder("output"));
+    el("convert").addEventListener("click", convert);
+    el("open-output").addEventListener("click", () => {
+      invoke("open_folder", { path: state.outputDir }).catch((e) => alert(e));
+    });
 
-  // live per-file status during conversion
-  await listen("file-status", (event) => {
-    state.results[event.payload.name] = event.payload;
+    // live per-file status during conversion
+    await listen("file-status", (event) => {
+      state.results[event.payload.name] = event.payload;
+      render();
+    });
+
+    // drag & drop of additional .xls files from anywhere
+    await listen("tauri://drag-drop", (event) => {
+      for (const p of event.payload.paths ?? []) {
+        if (!p.toLowerCase().endsWith(".xls")) continue;
+        if (state.dropped.some((f) => f.path === p)) continue;
+        const name = p.split(/[\\/]/).pop();
+        state.dropped.push({ name, path: p });
+      }
+      render();
+    });
+
+    const config = await invoke("load_config");
+    state.inputDir = config.input_dir ?? null;
+    state.outputDir = config.output_dir ?? null;
+    await rescan();
     render();
-  });
-
-  // drag & drop of additional .xls files from anywhere
-  await listen("tauri://drag-drop", (event) => {
-    for (const p of event.payload.paths ?? []) {
-      if (!p.toLowerCase().endsWith(".xls")) continue;
-      if (state.dropped.some((f) => f.path === p)) continue;
-      const name = p.split(/[\\/]/).pop();
-      state.dropped.push({ name, path: p });
-    }
-    render();
-  });
-
-  const config = await invoke("load_config");
-  state.inputDir = config.input_dir ?? null;
-  state.outputDir = config.output_dir ?? null;
-  await rescan();
-  render();
+  } catch (e) {
+    alert(`Initialisierung fehlgeschlagen:\n${e}`);
+  }
 }
 
 init();
