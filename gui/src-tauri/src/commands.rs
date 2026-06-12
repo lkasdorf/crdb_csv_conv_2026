@@ -74,6 +74,7 @@ pub fn open_folder(path: String) -> Result<(), String> {
 
 const APP_DISPLAY_NAME: &str = "CRDB CSV Converter";
 // Embedded at compile time — works in the portable exe, no runtime file lookup.
+// Path is relative to this source file: src/ → src-tauri/ → gui/ → repo root.
 const LICENSE_TEXT: &str = include_str!("../../../LICENSE");
 
 #[derive(serde::Serialize)]
