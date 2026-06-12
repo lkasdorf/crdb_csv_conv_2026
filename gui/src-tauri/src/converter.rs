@@ -24,6 +24,13 @@ pub fn clean_reference(raw: &str) -> String {
     collapsed.chars().take(99).collect()
 }
 
+/// Format a float to match Python's `str(float)` — shortest round-trip
+/// representation with at least one decimal digit (e.g. `977000.0`, not
+/// `977000`). Rust's `{:?}` produces this; do NOT change to `{}` (Display),
+/// which would drop the trailing `.0` and break the byte-exact CSV contract.
+/// Python switches to scientific notation at extreme magnitudes (~1e15+)
+/// where Rust does not match exactly; bank amounts never reach that range,
+/// and the byte-exact reference test is the arbiter.
 pub fn format_amount(v: f64) -> String {
     format!("{v:?}")
 }
@@ -118,5 +125,19 @@ mod tests {
     fn clean_reference_empty_and_whitespace_only() {
         assert_eq!(clean_reference(""), "");
         assert_eq!(clean_reference("   "), "");
+    }
+
+    #[test]
+    fn csv_field_quotes_newline_and_carriage_return() {
+        assert_eq!(csv_field("a\nb"), "\"a\nb\"");
+        assert_eq!(csv_field("a\rb"), "\"a\rb\"");
+    }
+
+    #[test]
+    fn format_amount_large_realistic_values() {
+        // TZS amounts reach billions; Python str() and Rust {:?} agree on
+        // plain decimal notation in this range (divergence starts ~1e15)
+        assert_eq!(format_amount(1000000000.0), "1000000000.0");
+        assert_eq!(format_amount(999999999999.99), "999999999999.99");
     }
 }
