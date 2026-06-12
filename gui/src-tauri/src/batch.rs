@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LogEntry {
     pub hash: String,
     pub converted_at: String,
@@ -22,21 +22,25 @@ pub enum FileStatus {
 }
 
 pub fn load_log(path: &Path) -> (ConversionLog, Option<String>) {
-    if !path.exists() {
-        return (ConversionLog::new(), None);
-    }
-    let parsed = std::fs::read_to_string(path)
-        .map_err(|e| e.to_string())
-        .and_then(|text| serde_json::from_str(&text).map_err(|e| e.to_string()));
-    match parsed {
-        Ok(log) => (log, None),
+    match std::fs::read_to_string(path) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => (ConversionLog::new(), None),
         Err(e) => (
             ConversionLog::new(),
             Some(format!("Log unlesbar, beginne neu: {e}")),
         ),
+        Ok(text) => match serde_json::from_str(&text) {
+            Ok(log) => (log, None),
+            Err(e) => (
+                ConversionLog::new(),
+                Some(format!("Log unlesbar, beginne neu: {e}")),
+            ),
+        },
     }
 }
 
+/// Plain (non-atomic) write — acceptable for this single-user desktop tool:
+/// the log is tiny, written sequentially, and a torn write is recovered by
+/// the corrupt-log path in `load_log`.
 pub fn save_log(path: &Path, log: &ConversionLog) -> Result<(), String> {
     let json = serde_json::to_string_pretty(log).map_err(|e| e.to_string())?;
     std::fs::write(path, json)
