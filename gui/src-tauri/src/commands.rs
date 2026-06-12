@@ -71,3 +71,41 @@ pub fn open_folder(path: String) -> Result<(), String> {
     let result = std::process::Command::new("xdg-open").arg(&path).spawn();
     result.map(|_| ()).map_err(|e| e.to_string())
 }
+
+const APP_DISPLAY_NAME: &str = "CRDB CSV Converter";
+// Embedded at compile time — works in the portable exe, no runtime file lookup.
+const LICENSE_TEXT: &str = include_str!("../../../LICENSE");
+
+#[derive(serde::Serialize)]
+pub struct AppInfo {
+    pub name: String,
+    pub version: String,
+    pub license_text: String,
+}
+
+fn app_info() -> AppInfo {
+    AppInfo {
+        name: APP_DISPLAY_NAME.to_string(),
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        license_text: LICENSE_TEXT.to_string(),
+    }
+}
+
+#[tauri::command]
+pub fn get_app_info() -> AppInfo {
+    app_info()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn app_info_exposes_version_and_license() {
+        let info = app_info();
+        assert_eq!(info.name, "CRDB CSV Converter");
+        assert_eq!(info.version, env!("CARGO_PKG_VERSION"));
+        assert!(info.license_text.contains("MIT License"));
+        assert!(info.license_text.contains("Leon Kasdorf"));
+    }
+}
