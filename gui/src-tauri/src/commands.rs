@@ -36,6 +36,9 @@ pub fn scan_files(input_dir: String) -> Result<batch::ScanResult, String> {
     batch::scan_input_dir(Path::new(&input_dir))
 }
 
+/// Intentionally synchronous: Tauri v2 dispatches sync commands on their own
+/// thread, so the batch runs off the event loop and the per-file "file-status"
+/// events are delivered live. Do not move this onto the main thread.
 #[tauri::command]
 pub fn convert_files(
     app: tauri::AppHandle,
@@ -58,6 +61,10 @@ pub fn convert_files(
 
 #[tauri::command]
 pub fn open_folder(path: String) -> Result<(), String> {
+    // explorer/xdg-open silently no-op on bad paths; validate for a truthful result
+    if !Path::new(&path).is_dir() {
+        return Err(format!("Ordner nicht gefunden: {path}"));
+    }
     #[cfg(target_os = "windows")]
     let result = std::process::Command::new("explorer").arg(&path).spawn();
     #[cfg(not(target_os = "windows"))]
