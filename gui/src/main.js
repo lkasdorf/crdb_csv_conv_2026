@@ -342,6 +342,7 @@ async function init() {
     // keyboard shortcuts
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") { closeModal(); closeMenus(); return; }
+      if (el("modal-overlay").style.display !== "none") return; // dialog open — only Esc acts
       if (e.key === "F1") { e.preventDefault(); showHelp(); return; }
       if (e.key === "F5") { e.preventDefault(); if (!state.converting && state.inputDir) rescan(); return; }
       if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "o") { e.preventDefault(); if (!state.converting) pickFolder("output"); return; }
