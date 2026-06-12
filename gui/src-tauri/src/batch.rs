@@ -1,6 +1,55 @@
 //! Batch conversion with SHA256 dedup, log-compatible with batch_convert.py.
 
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct LogEntry {
+    pub hash: String,
+    pub converted_at: String,
+    pub output_file: String,
+}
+
+pub type ConversionLog = BTreeMap<String, LogEntry>;
+
+#[derive(Serialize, PartialEq, Eq, Debug, Clone, Copy)]
+#[serde(rename_all = "lowercase")]
+pub enum FileStatus {
+    New,
+    Converted,
+    Changed,
+}
+
+pub fn load_log(path: &Path) -> (ConversionLog, Option<String>) {
+    if !path.exists() {
+        return (ConversionLog::new(), None);
+    }
+    let parsed = std::fs::read_to_string(path)
+        .map_err(|e| e.to_string())
+        .and_then(|text| serde_json::from_str(&text).map_err(|e| e.to_string()));
+    match parsed {
+        Ok(log) => (log, None),
+        Err(e) => (
+            ConversionLog::new(),
+            Some(format!("Log unlesbar, beginne neu: {e}")),
+        ),
+    }
+}
+
+pub fn save_log(path: &Path, log: &ConversionLog) -> Result<(), String> {
+    let json = serde_json::to_string_pretty(log).map_err(|e| e.to_string())?;
+    std::fs::write(path, json)
+        .map_err(|e| format!("cannot write {}: {e}", path.display()))
+}
+
+pub fn classify(log: &ConversionLog, name: &str, hash: &str) -> FileStatus {
+    match log.get(name) {
+        None => FileStatus::New,
+        Some(e) if e.hash == hash => FileStatus::Converted,
+        Some(_) => FileStatus::Changed,
+    }
+}
 
 pub fn hash_file(path: &Path) -> Result<String, String> {
     use sha2::{Digest, Sha256};
@@ -53,5 +102,78 @@ mod tests {
         // Path::new("C:/").parent() is None on Windows — distinct from the Some("") case
         let p = log_path(Path::new("C:/"));
         assert_eq!(p, PathBuf::from("C:/.conversion_log.json"));
+    }
+
+    #[test]
+    fn log_roundtrip() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(".conversion_log.json");
+        let mut log = ConversionLog::new();
+        log.insert(
+            "a.xls".to_string(),
+            LogEntry {
+                hash: "abc".to_string(),
+                converted_at: "2026-06-12T10:00:00.000000".to_string(),
+                output_file: "C:/out/a.csv".to_string(),
+            },
+        );
+        save_log(&path, &log).unwrap();
+        let (loaded, warning) = load_log(&path);
+        assert!(warning.is_none());
+        assert_eq!(loaded.get("a.xls").unwrap().hash, "abc");
+    }
+
+    #[test]
+    fn missing_log_is_empty_without_warning() {
+        let (log, warning) = load_log(Path::new("does/not/exist.json"));
+        assert!(log.is_empty());
+        assert!(warning.is_none());
+    }
+
+    #[test]
+    fn corrupt_log_starts_fresh_with_warning() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(".conversion_log.json");
+        std::fs::write(&path, "{ not json").unwrap();
+        let (log, warning) = load_log(&path);
+        assert!(log.is_empty());
+        assert!(warning.is_some());
+    }
+
+    #[test]
+    fn classify_statuses() {
+        let mut log = ConversionLog::new();
+        log.insert(
+            "a.xls".to_string(),
+            LogEntry {
+                hash: "h1".to_string(),
+                converted_at: String::new(),
+                output_file: String::new(),
+            },
+        );
+        assert_eq!(classify(&log, "b.xls", "h9"), FileStatus::New);
+        assert_eq!(classify(&log, "a.xls", "h1"), FileStatus::Converted);
+        assert_eq!(classify(&log, "a.xls", "h2"), FileStatus::Changed);
+    }
+
+    #[test]
+    fn log_reads_python_written_format() {
+        // exactly what batch_convert.py writes with json.dump(indent=2)
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(".conversion_log.json");
+        std::fs::write(
+            &path,
+            r#"{
+  "202601_Statement_TZS.xls": {
+    "hash": "deadbeef",
+    "converted_at": "2026-06-01T10:24:00.123456",
+    "output_file": "/repo/converted/202601_Statement_TZS.csv"
+  }
+}"#,
+        )
+        .unwrap();
+        let (log, warning) = load_log(&path);
+        assert!(warning.is_none());
+        assert_eq!(log.get("202601_Statement_TZS.xls").unwrap().hash, "deadbeef");
     }
 }
