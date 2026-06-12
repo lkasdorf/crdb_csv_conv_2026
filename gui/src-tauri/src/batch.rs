@@ -153,6 +153,9 @@ fn process_one(
         name.to_string(),
         LogEntry {
             hash,
+            // Format-compatible with Python's datetime.isoformat(); informational
+            // only — dedup compares only `hash`. (Python omits the fraction at
+            // exactly zero microseconds; we always write six digits.)
             converted_at: chrono::Local::now()
                 .format("%Y-%m-%dT%H:%M:%S%.6f")
                 .to_string(),
