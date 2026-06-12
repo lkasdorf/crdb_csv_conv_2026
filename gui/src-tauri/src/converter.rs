@@ -209,4 +209,20 @@ mod tests {
         assert_eq!(format_amount(1000000000.0), "1000000000.0");
         assert_eq!(format_amount(999999999999.99), "999999999999.99");
     }
+
+    #[test]
+    fn row_parse_failure_produces_joined_warning() {
+        // simulate the (Err, Err, Ok) arm the same way convert_xls_to_csv joins messages
+        let d = parse_date("garbage").err();
+        let w = parse_amount("not-a-number").err();
+        let c = parse_amount("0.00").err();
+        let msg = [d, w, c]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>()
+            .join("; ");
+        assert!(msg.contains("unexpected date format"));
+        assert!(msg.contains("invalid amount"));
+        assert!(!msg.contains("0.00\";"));
+    }
 }

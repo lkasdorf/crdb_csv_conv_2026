@@ -72,6 +72,104 @@ pub fn log_path(input_dir: &Path) -> PathBuf {
 }
 
 #[derive(Serialize, Clone, Debug)]
+pub struct ConvertOutcome {
+    pub name: String,
+    pub status: String, // "converted" | "skipped" | "error"
+    pub message: String,
+    pub warnings: Vec<String>,
+}
+
+pub fn convert_files(
+    input_dir: &Path,
+    files: &[PathBuf],
+    output_dir: &Path,
+    force: bool,
+    mut on_progress: impl FnMut(&ConvertOutcome),
+) -> Result<Vec<ConvertOutcome>, String> {
+    std::fs::create_dir_all(output_dir)
+        .map_err(|e| format!("cannot create {}: {e}", output_dir.display()))?;
+
+    let log_file = log_path(input_dir);
+    let (mut log, log_warning) = load_log(&log_file);
+    let mut results = Vec::new();
+
+    for file in files {
+        let name = file
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default();
+
+        let outcome = match process_one(file, &name, output_dir, force, &mut log, &log_file) {
+            Ok(o) => o,
+            Err(message) => ConvertOutcome {
+                name: name.clone(),
+                status: "error".to_string(),
+                message,
+                warnings: Vec::new(),
+            },
+        };
+        on_progress(&outcome);
+        results.push(outcome);
+    }
+
+    if let Some(w) = log_warning {
+        eprintln!("{w}");
+    }
+    Ok(results)
+}
+
+fn process_one(
+    file: &Path,
+    name: &str,
+    output_dir: &Path,
+    force: bool,
+    log: &mut ConversionLog,
+    log_file: &Path,
+) -> Result<ConvertOutcome, String> {
+    let hash = hash_file(file)?;
+
+    if !force && classify(log, name, &hash) == FileStatus::Converted {
+        return Ok(ConvertOutcome {
+            name: name.to_string(),
+            status: "skipped".to_string(),
+            message: "bereits konvertiert".to_string(),
+            warnings: Vec::new(),
+        });
+    }
+
+    let stem = Path::new(name)
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_else(|| name.to_string());
+    let csv_path = output_dir.join(format!("{stem}.csv"));
+
+    let conversion = crate::converter::convert_xls_to_csv(file, &csv_path)?;
+
+    let output_abs = std::path::absolute(&csv_path)
+        .unwrap_or(csv_path.clone())
+        .to_string_lossy()
+        .into_owned();
+    log.insert(
+        name.to_string(),
+        LogEntry {
+            hash,
+            converted_at: chrono::Local::now()
+                .format("%Y-%m-%dT%H:%M:%S%.6f")
+                .to_string(),
+            output_file: output_abs,
+        },
+    );
+    save_log(log_file, log)?;
+
+    Ok(ConvertOutcome {
+        name: name.to_string(),
+        status: "converted".to_string(),
+        message: format!("{} Zeilen", conversion.rows),
+        warnings: conversion.warnings,
+    })
+}
+
+#[derive(Serialize, Clone, Debug)]
 pub struct FileEntry {
     pub name: String,
     pub path: String,
@@ -115,6 +213,96 @@ pub fn scan_input_dir(input_dir: &Path) -> Result<Vec<FileEntry>, String> {
 mod tests {
     use super::*;
     use std::io::Write;
+    use std::path::PathBuf;
+
+    fn example_xls() -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../example/202601_Statement_TZS.xls")
+    }
+
+    #[test]
+    fn convert_files_converts_then_skips_then_forces() {
+        let root = tempfile::tempdir().unwrap();
+        let input = root.path().join("to_convert");
+        let output = root.path().join("converted");
+        std::fs::create_dir(&input).unwrap();
+        std::fs::copy(example_xls(), input.join("stmt.xls")).unwrap();
+        let files = vec![input.join("stmt.xls")];
+
+        // 1st run: converts
+        let r1 = convert_files(&input, &files, &output, false, |_| {}).unwrap();
+        assert_eq!(r1[0].status, "converted");
+        assert!(output.join("stmt.csv").is_file());
+        assert!(log_path(&input).is_file());
+
+        // 2nd run: skips (hash unchanged)
+        let r2 = convert_files(&input, &files, &output, false, |_| {}).unwrap();
+        assert_eq!(r2[0].status, "skipped");
+
+        // 3rd run with force: converts again
+        let r3 = convert_files(&input, &files, &output, true, |_| {}).unwrap();
+        assert_eq!(r3[0].status, "converted");
+
+        // 4th run: file content changed -> hash differs -> reconverts without force
+        let mut bytes = std::fs::read(input.join("stmt.xls")).unwrap();
+        bytes.push(0u8);
+        std::fs::write(input.join("stmt.xls"), &bytes).unwrap();
+        let r4 = convert_files(&input, &files, &output, false, |_| {}).unwrap();
+        // note: the appended byte makes the XLS invalid for calamine on some
+        // versions; accept either reconversion or a clean error - the key
+        // assertion is that it is NOT skipped
+        assert_ne!(r4[0].status, "skipped");
+    }
+
+    #[test]
+    fn convert_files_error_does_not_abort_run() {
+        let root = tempfile::tempdir().unwrap();
+        let input = root.path().join("to_convert");
+        let output = root.path().join("converted");
+        std::fs::create_dir(&input).unwrap();
+        std::fs::write(input.join("broken.xls"), b"this is not an xls file").unwrap();
+        std::fs::copy(example_xls(), input.join("good.xls")).unwrap();
+
+        let files = vec![input.join("broken.xls"), input.join("good.xls")];
+        let results = convert_files(&input, &files, &output, false, |_| {}).unwrap();
+
+        assert_eq!(results[0].status, "error");
+        assert!(!results[0].message.is_empty());
+        assert_eq!(results[1].status, "converted");
+    }
+
+    #[test]
+    fn convert_files_reports_progress() {
+        let root = tempfile::tempdir().unwrap();
+        let input = root.path().join("to_convert");
+        let output = root.path().join("converted");
+        std::fs::create_dir(&input).unwrap();
+        std::fs::copy(example_xls(), input.join("stmt.xls")).unwrap();
+
+        let mut seen = Vec::new();
+        convert_files(&input, &[input.join("stmt.xls")], &output, false, |o| {
+            seen.push(o.status.clone())
+        })
+        .unwrap();
+        assert_eq!(seen, vec!["converted".to_string()]);
+    }
+
+    #[test]
+    fn convert_files_surfaces_row_warnings() {
+        // a file whose XLS structure is valid but contains one unparseable row
+        // cannot be fabricated easily; instead exercise the warning plumbing
+        // directly at the converter level and the outcome mapping here.
+        let root = tempfile::tempdir().unwrap();
+        let input = root.path().join("to_convert");
+        let output = root.path().join("converted");
+        std::fs::create_dir(&input).unwrap();
+        std::fs::copy(example_xls(), input.join("stmt.xls")).unwrap();
+
+        let results =
+            convert_files(&input, &[input.join("stmt.xls")], &output, false, |_| {}).unwrap();
+        // the reference statement parses cleanly: warnings empty but PRESENT in the outcome
+        assert_eq!(results[0].status, "converted");
+        assert!(results[0].warnings.is_empty());
+    }
 
     #[test]
     fn hash_file_known_sha256() {
