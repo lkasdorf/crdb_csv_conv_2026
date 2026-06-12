@@ -111,11 +111,9 @@ pub fn open_url(url: String) -> Result<(), String> {
     if !is_allowed_url(&url) {
         return Err(format!("URL not allowed: {url}"));
     }
-    #[cfg(target_os = "windows")]
-    let result = std::process::Command::new("explorer").arg(&url).spawn();
-    #[cfg(not(target_os = "windows"))]
-    let result = std::process::Command::new("xdg-open").arg(&url).spawn();
-    result.map(|_| ()).map_err(|e| e.to_string())
+    // tauri-plugin-opener uses ShellExecuteW on Windows / xdg-open semantics on
+    // Linux — opens the default browser without any shell metachar parsing.
+    tauri_plugin_opener::open_url(&url, None::<&str>).map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
