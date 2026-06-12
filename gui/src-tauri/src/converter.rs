@@ -1,5 +1,13 @@
 //! Byte-exact port of crdb_to_zoho.py conversion logic.
 
+/// CRDB XLS layout: rows 0-13 metadata, row 14 column headers, data from row 15.
+const DATA_START_ROW: usize = 15;
+/// Transaction columns: 0 = Posting Date, 1 = Details, 3 = Debit, 4 = Credit.
+const COL_POSTING_DATE: usize = 0;
+const COL_DETAILS: usize = 1;
+const COL_DEBIT: usize = 3;
+const COL_CREDIT: usize = 4;
+
 pub fn parse_date(raw: &str) -> Result<String, String> {
     let token = raw
         .split_whitespace()
@@ -50,6 +58,10 @@ pub struct Conversion {
     pub warnings: Vec<String>,
 }
 
+/// Convert a CRDB Bank XLS statement to the ZOHO Books CSV format.
+/// Byte-exact port of `convert_xls_to_csv` in `crdb_to_zoho.py` — proven by
+/// the reference test in `tests/reference.rs`. Per-row parse failures are
+/// collected as warnings; file-level failures return `Err`.
 pub fn convert_xls_to_csv(xls_path: &Path, csv_path: &Path) -> Result<Conversion, String> {
     use calamine::{open_workbook, Reader, Xls};
 
@@ -69,23 +81,23 @@ pub fn convert_xls_to_csv(xls_path: &Path, csv_path: &Path) -> Result<Conversion
 
     for (i, row) in range.rows().enumerate() {
         let abs = start_row + i;
-        if abs < 15 {
-            continue; // rows 0-13 metadata, row 14 column headers
+        if abs < DATA_START_ROW {
+            continue;
         }
         let cell = |idx: usize| row.get(idx).map(|c| c.to_string()).unwrap_or_default();
 
-        let posting_date = cell(0);
+        let posting_date = cell(COL_POSTING_DATE);
         if posting_date.trim().is_empty() {
             continue; // skip empty rows, same as the Python converter
         }
 
         match (
             parse_date(&posting_date),
-            parse_amount(&cell(3)),
-            parse_amount(&cell(4)),
+            parse_amount(&cell(COL_DEBIT)),
+            parse_amount(&cell(COL_CREDIT)),
         ) {
             (Ok(date), Ok(withdrawals), Ok(deposits)) => {
-                let reference = clean_reference(&cell(1));
+                let reference = clean_reference(&cell(COL_DETAILS));
                 out.push_str(&format!(
                     "{};{};{};;Transfer;{}\n",
                     csv_field(&date),

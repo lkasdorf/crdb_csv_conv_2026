@@ -65,6 +65,20 @@ For individual files you can use the single conversion script:
 ./venv/bin/python3 crdb_to_zoho.py <xls_file> [output_csv]
 ```
 
+## Desktop GUI (Windows + Linux)
+
+A Tauri-based GUI lives in `gui/`. It mirrors the batch workflow (SHA256 dedup,
+shared `.conversion_log.json` with the CLI) and adds drag & drop.
+
+Prerequisites: [rustup](https://rustup.rs) and `cargo install tauri-cli --version "^2"`.
+On Linux additionally WebKitGTK dev packages (see Tauri v2 docs).
+
+```bash
+cd gui/src-tauri
+cargo tauri dev      # run in development mode
+cargo tauri build    # release build -> gui/src-tauri/target/release/
+```
+
 ## CSV Format
 
 The generated CSV file has the following columns:

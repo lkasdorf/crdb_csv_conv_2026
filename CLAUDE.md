@@ -30,6 +30,13 @@ rm .conversion_log.json
 
 # Push to GitHub
 git push
+
+# GUI (Tauri) — dev run and release build (from gui/src-tauri/)
+cargo tauri dev
+cargo tauri build
+
+# GUI tests (includes byte-exact reference test against example/)
+cd gui/src-tauri && cargo test
 ```
 
 Only dependency: `xlrd` (reads legacy Excel 97-2003 CDFV2 `.xls` format).
@@ -55,6 +62,14 @@ Only dependency: `xlrd` (reads legacy Excel 97-2003 CDFV2 `.xls` format).
 - A file is re-converted only when its SHA256 hash differs from the log entry
 
 **Shell wrappers** (`convert.sh`, `convert_all.sh`) — Resolve venv path relative to script location, verify venv exists, delegate to Python.
+
+**`gui/`** — Tauri v2 desktop GUI (Windows + Linux). Rust port of the conversion
+logic (`gui/src-tauri/src/converter.rs`, byte-exact vs the Python output, proven by
+`gui/src-tauri/tests/reference.rs`) and of the batch/dedup semantics
+(`gui/src-tauri/src/batch.rs`). The dedup log lives in the parent of the chosen
+input dir — with `to_convert/` selected that is the same `.conversion_log.json`
+the Python CLI uses, so GUI and CLI share dedup state. Frontend is static
+HTML/CSS/JS in `gui/src/` (no Node toolchain). The Python CLI remains unchanged.
 
 ## Modifying the Code
 

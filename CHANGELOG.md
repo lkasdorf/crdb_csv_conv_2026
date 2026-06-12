@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Tauri v2 desktop GUI (Windows + Linux) with batch conversion, SHA256 dedup
+  shared with the Python CLI, drag & drop, and byte-exact Rust port of the
+  conversion logic verified against the reference CSV.
 - `.gitattributes` enforcing LF line endings repo-wide (`* text=auto eol=lf`), with `*.xls`/`*.xlsx` marked binary. Stops spurious CRLF-only diffs on Windows checkouts while keeping the shell wrappers bash-runnable and the ZOHO Books CSV output as required Unix LF.
 
 ### Changed
