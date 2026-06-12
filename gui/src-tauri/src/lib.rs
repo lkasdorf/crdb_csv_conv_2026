@@ -1,3 +1,4 @@
+pub mod batch;
 pub mod converter;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
