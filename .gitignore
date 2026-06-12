@@ -31,3 +31,7 @@ Thumbs.db
 to_convert/*.xls
 converted/*.csv
 .conversion_log.json
+
+# Tauri / Rust
+gui/src-tauri/target/
+gui/src-tauri/gen/

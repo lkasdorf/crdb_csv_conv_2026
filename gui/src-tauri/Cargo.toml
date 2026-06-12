@@ -1,0 +1,26 @@
+[package]
+name = "crdb-csv-gui"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "crdb_csv_gui_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+calamine = "0.26"
+sha2 = "0.10"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = "0.4"
+# Pin time to avoid E0119 conflict in tauri-utils v2.9.2 (ModifierValue blanket impl
+# introduced in time >= 0.3.38 conflicts with tauri-utils blanket From<T: Into<Number>>)
+time = ">=0.3, <0.3.38"
+
+[dev-dependencies]
+tempfile = "3"
